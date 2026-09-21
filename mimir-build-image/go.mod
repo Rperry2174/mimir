@@ -1,6 +1,6 @@
 module github.com/grafana/mimir/mimir-build-image
 
-go 1.26.7
+go 1.27.1
 
 tool (
 	// All of the tools listed below are automatically installed in the build image with "go install".
