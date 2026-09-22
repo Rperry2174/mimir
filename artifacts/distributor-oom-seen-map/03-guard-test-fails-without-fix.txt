@@ -1,0 +1,11 @@
+=== RUN   TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream
+    distributor_merge_middleware_test.go:587: 
+        	Error Trace:	/workspace/pkg/distributor/distributor_merge_middleware_test.go:587
+        	Error:      	Should be zero, but was 100
+        	Test:       	TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream
+        	Messages:   	the lookup map must be cleared and returned to the pool before the request is pushed downstream
+--- FAIL: TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream (0.17s)
+FAIL
+FAIL	github.com/grafana/mimir/pkg/distributor	0.193s
+FAIL
+EXIT=1

@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/grafana/mimir/pkg/distributor
+cpu: Intel(R) Xeon(R) Processor
+BenchmarkDistributor_prePushMergeMiddleware/flag_off/n=1000-8         	    2000	      1431 ns/op	       0 B/op	       0 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=100/dup=0-8     	    2000	      8021 ns/op	      99 B/op	       0 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=1000/dup=0-8    	    2000	     90588 ns/op	   14551 B/op	       1 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=1000/dup=1%-8   	    2000	     92052 ns/op	   16686 B/op	       6 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=1000/dup=10%-8  	    2000	     93950 ns/op	   21068 B/op	      10 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=1000/dup=100%-8 	    2000	     88563 ns/op	   69328 B/op	      12 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=500/histograms/dup=10%-8         	    2000	     56529 ns/op	   45745 B/op	       9 allocs/op
+BenchmarkDistributor_prePushMergeMiddleware/flag_on/n=200/largeLabels/dup=10%-8        	    2000	    127315 ns/op	    8661 B/op	      11 allocs/op
+PASS
+ok  	github.com/grafana/mimir/pkg/distributor	9.068s
+EXIT=0

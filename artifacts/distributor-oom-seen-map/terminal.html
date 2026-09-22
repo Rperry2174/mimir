@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body {
+    margin: 0; width: 1200px; background: #111217; color: #dfe1e4;
+    font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { padding: 32px 40px 36px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 24px; letter-spacing: -0.2px; }
+  .term { background: #0b0c0e; border: 1px solid #2e3238; border-radius: 8px; margin-bottom: 18px; overflow: hidden; }
+  .term:last-child { margin-bottom: 0; }
+  .term .bar { background: #181b1f; border-bottom: 1px solid #2e3238; padding: 9px 14px; font-size: 12px; color: #8e9096; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .d1 { background: #f2495c; } .d2 { background: #ff9830; } .d3 { background: #56a64b; }
+  .bar .title { margin-left: 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .bar .badge { margin-left: auto; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge.fail { background: rgba(242,73,92,0.15); color: #f2495c; }
+  .badge.pass { background: rgba(86,166,75,0.15); color: #56a64b; }
+  pre { margin: 0; padding: 15px 18px 17px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.62; color: #c9ccd1; white-space: pre; }
+  .r { color: #f2495c; } .g { color: #56a64b; } .m { color: #6e7176; } .y { color: #ff9830; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Regression guard and measurement, run on both sides of the fix</h1>
+
+  <div class="term">
+    <div class="bar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="title">go test ./pkg/distributor -run TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream</span><span class="badge fail">on main</span></div>
+<pre>=== RUN   TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream
+    distributor_merge_middleware_test.go:587:
+        <span class="m">Error:</span>      <span class="r">Should be zero, but was 100</span>
+        <span class="m">Messages:</span>   the lookup map must be cleared and returned to the pool
+                    before the request is pushed downstream
+<span class="r">--- FAIL: TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream (0.17s)</span>
+<span class="r">FAIL</span>    github.com/grafana/mimir/pkg/distributor    0.193s</pre>
+  </div>
+
+  <div class="term">
+    <div class="bar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="title">go test ./pkg/distributor -run prePushMerge</span><span class="badge pass">with fix</span></div>
+<pre><span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware (0.10s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_Disabled (0.10s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_InterleavedDuplicates (0.10s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_BoundsCollisionScan (0.10s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps (0.23s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream (0.10s)  <span class="y">&lt;- new</span>
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_InvalidatesMarshalCache (0.10s)
+<span class="g">--- PASS:</span> TestDistributor_prePushMergeMiddleware_CountsCrossObjectDuplicates (0.21s)
+<span class="g">ok</span>      github.com/grafana/mimir/pkg/distributor    1.076s</pre>
+  </div>
+
+  <div class="term">
+    <div class="bar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="title">retention harness — 512 pushes x 1000 series parked in next()</span></div>
+<pre><span class="m">before</span>  lookup maps taken from the pool     : <span class="r">512</span>
+<span class="m">before</span>  heap held while pushes are in flight: <span class="r">56.4 MiB</span>
+
+<span class="m">after</span>   lookup maps taken from the pool     : <span class="g">8</span>
+<span class="m">after</span>   heap held while pushes are in flight: <span class="g">0.3 MiB</span></pre>
+  </div>
+</div>
+</body>
+</html>

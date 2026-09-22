@@ -1,0 +1,10 @@
+=== RUN   TestEvidenceInFlightSeenMapRetention
+    zz_oom_evidence_test.go:94: in-flight pushes                   : 512 (1000 series each)
+    zz_oom_evidence_test.go:95: lookup maps taken from the pool    : 512
+    zz_oom_evidence_test.go:96: heap in use, requests parked       : 183.6 MiB
+    zz_oom_evidence_test.go:97: heap in use, baseline              : 127.2 MiB
+    zz_oom_evidence_test.go:98: heap held while pushes are in flight: 56.4 MiB
+--- PASS: TestEvidenceInFlightSeenMapRetention (0.31s)
+PASS
+ok  	github.com/grafana/mimir/pkg/distributor	0.343s
+EXIT=0

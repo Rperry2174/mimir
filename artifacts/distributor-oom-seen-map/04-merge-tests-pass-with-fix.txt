@@ -1,0 +1,33 @@
+=== RUN   TestDistributor_prePushMergeMiddleware
+=== RUN   TestDistributor_prePushMergeMiddleware/merges_samples_across_identical_label_sets
+=== RUN   TestDistributor_prePushMergeMiddleware/merges_histograms_and_exemplars_and_keeps_exemplar_labels_valid_after_pooled_reuse
+=== RUN   TestDistributor_prePushMergeMiddleware/merges_a_duplicate_that_carries_only_a_native_histogram
+=== RUN   TestDistributor_prePushMergeMiddleware/merges_identical_label_sets_sharing_a_created_timestamp
+=== RUN   TestDistributor_prePushMergeMiddleware/does_not_merge_identical_label_sets_with_different_created_timestamps
+=== RUN   TestDistributor_prePushMergeMiddleware/folds_multiple_duplicate_label_sets_into_the_first_occurrence
+=== RUN   TestDistributor_prePushMergeMiddleware/preserves_distinct_label_sets
+=== RUN   TestDistributor_prePushMergeMiddleware/merges_duplicates_whose_label_sets_share_a_hash
+=== RUN   TestDistributor_prePushMergeMiddleware/passes_through_single-series_request_unchanged
+=== RUN   TestDistributor_prePushMergeMiddleware/passes_through_empty_request_unchanged
+--- PASS: TestDistributor_prePushMergeMiddleware (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_Disabled
+--- PASS: TestDistributor_prePushMergeMiddleware_Disabled (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_InterleavedDuplicates
+--- PASS: TestDistributor_prePushMergeMiddleware_InterleavedDuplicates (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_BoundsCollisionScan
+--- PASS: TestDistributor_prePushMergeMiddleware_BoundsCollisionScan (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps
+=== RUN   TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps/at_the_bound
+=== RUN   TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps/past_the_bound
+--- PASS: TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps (0.23s)
+=== RUN   TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream
+--- PASS: TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_InvalidatesMarshalCache
+--- PASS: TestDistributor_prePushMergeMiddleware_InvalidatesMarshalCache (0.10s)
+=== RUN   TestDistributor_prePushMergeMiddleware_CountsCrossObjectDuplicates
+=== RUN   TestDistributor_prePushMergeMiddleware_CountsCrossObjectDuplicates/merge_duplicate_timeseries=true
+=== RUN   TestDistributor_prePushMergeMiddleware_CountsCrossObjectDuplicates/merge_duplicate_timeseries=false
+--- PASS: TestDistributor_prePushMergeMiddleware_CountsCrossObjectDuplicates (0.21s)
+PASS
+ok  	github.com/grafana/mimir/pkg/distributor	1.076s
+EXIT=0

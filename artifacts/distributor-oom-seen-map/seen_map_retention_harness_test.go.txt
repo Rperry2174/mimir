@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// Throwaway measurement harness for the distributor OOM investigation.
+// NOT meant to be committed: it is kept under artifacts/ for reproducibility.
+
+package distributor
+
+import (
+	"context"
+	"fmt"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"github.com/grafana/dskit/user"
+	"github.com/prometheus/common/model"
+
+	"github.com/grafana/mimir/pkg/mimirpb"
+)
+
+func heapInuse() uint64 {
+	runtime.GC()
+	runtime.GC()
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	return ms.HeapInuse
+}
+
+// TestEvidenceInFlightSeenMapRetention parks inFlight pushes inside the next
+// PushFunc (which is what happens in production while the distributor waits on
+// the ingesters / Kafka) and reports how many prePushMergeSeenPool maps are
+// pinned for the whole duration of those pushes.
+func TestEvidenceInFlightSeenMapRetention(t *testing.T) {
+	const (
+		inFlight  = 512
+		numSeries = 1000
+	)
+
+	var newCalls atomic.Int64
+	original := prePushMergeSeenPool
+	prePushMergeSeenPool = &sync.Pool{New: func() any {
+		newCalls.Add(1)
+		return make(map[prePushMergeSeenKey]prePushMergeSeenEntry)
+	}}
+	t.Cleanup(func() { prePushMergeSeenPool = original })
+
+	d := newMergeTestDistributor(t, true)
+	ctx := user.InjectOrgID(context.Background(), "user")
+
+	reqs := make([]*Request, inFlight)
+	for i := range reqs {
+		ts := make([]mimirpb.PreallocTimeseries, 0, numSeries)
+		for s := 0; s < numSeries; s++ {
+			lbls := []string{model.MetricNameLabel, fmt.Sprintf("series_%d", s)}
+			ts = append(ts, makeTimeseries(lbls, makeSamples(int64(s), float64(s)), nil, nil))
+		}
+		req := &mimirpb.WriteRequest{Timeseries: ts}
+		reqs[i] = NewParsedRequest(req, req.Size())
+	}
+
+	arrived := make(chan struct{}, inFlight)
+	release := make(chan struct{})
+	next := func(_ context.Context, pushReq *Request) error {
+		arrived <- struct{}{}
+		<-release
+		pushReq.CleanUp()
+		return nil
+	}
+	fn := d.prePushMergeMiddleware(next)
+
+	baseline := heapInuse()
+
+	var wg sync.WaitGroup
+	for i := range reqs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := fn(ctx, reqs[i]); err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	for i := 0; i < inFlight; i++ {
+		<-arrived
+	}
+
+	parked := heapInuse()
+	pooledMaps := newCalls.Load()
+
+	close(release)
+	wg.Wait()
+
+	t.Logf("in-flight pushes                   : %d (%d series each)", inFlight, numSeries)
+	t.Logf("lookup maps taken from the pool    : %d", pooledMaps)
+	t.Logf("heap in use, requests parked       : %.1f MiB", float64(parked)/(1<<20))
+	t.Logf("heap in use, baseline              : %.1f MiB", float64(baseline)/(1<<20))
+	t.Logf("heap held while pushes are in flight: %.1f MiB", float64(parked-baseline)/(1<<20))
+}
