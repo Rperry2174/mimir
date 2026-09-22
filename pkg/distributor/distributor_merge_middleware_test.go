@@ -532,6 +532,61 @@ func TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps(t *test
 	}
 }
 
+// TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream
+// asserts that the pooled lookup map is back in the pool by the time the request
+// is handed to the next PushFunc, rather than once that call returns.
+//
+// next covers the rest of the push — validation, sharding and the round trip to
+// the ingesters or Kafka — so a map released only afterwards is pinned for the
+// whole request: one map per in-flight push (up to
+// -distributor.instance-limits.max-inflight-push-requests, 2000 by default)
+// instead of one per concurrent merge. Those maps hold one entry per timeseries
+// and a Go map keeps its buckets, so at a few hundred KiB each they are enough to
+// OOM a distributor long before the in-flight limit rejects anything.
+//
+// The map the middleware uses is observable here because the pool is swapped for
+// one whose New always hands back the same map, as in
+// TestDistributor_prePushMergeMiddleware_DoesNotPoolOversizedSeenMaps.
+func TestDistributor_prePushMergeMiddleware_ReleasesSeenMapBeforePushingDownstream(t *testing.T) {
+	const numSeries = 100
+
+	seen := make(map[prePushMergeSeenKey]prePushMergeSeenEntry)
+	newCalls := 0
+
+	original := prePushMergeSeenPool
+	prePushMergeSeenPool = &sync.Pool{New: func() any {
+		newCalls++
+		return seen
+	}}
+	t.Cleanup(func() { prePushMergeSeenPool = original })
+
+	ts := make([]mimirpb.PreallocTimeseries, 0, numSeries)
+	for s := 0; s < numSeries; s++ {
+		lbls := []string{model.MetricNameLabel, fmt.Sprintf("series_%d", s)}
+		ts = append(ts, makeTimeseries(lbls, makeSamples(int64(s), 1), nil, nil))
+	}
+
+	// Recorded rather than asserted inside next so that a failure reports from the
+	// test goroutine, and so the assertions below run even if next is never called.
+	seenEntriesDuringNext := -1
+	next := func(_ context.Context, pushReq *Request) error {
+		seenEntriesDuringNext = len(seen)
+		pushReq.CleanUp()
+		return nil
+	}
+
+	ctx := user.InjectOrgID(t.Context(), "user")
+	req := &mimirpb.WriteRequest{Timeseries: ts}
+	pushReq := NewParsedRequest(req, req.Size())
+	require.NoError(t, newMergeTestDistributor(t, true).prePushMergeMiddleware(next)(ctx, pushReq))
+
+	// The substituted pool starts empty and the middleware takes exactly one map
+	// from it, so this pins that the map asserted on below is the one it used.
+	require.Equal(t, 1, newCalls, "the middleware must have taken its map from the substituted pool")
+	require.Len(t, req.Timeseries, numSeries, "every label set is distinct, so nothing must merge")
+	assert.Zero(t, seenEntriesDuringNext, "the lookup map must be cleared and returned to the pool before the request is pushed downstream")
+}
+
 // TestDistributor_prePushMergeMiddleware_InvalidatesMarshalCache asserts that
 // after merging into an existing timeseries, the cached marshalled bytes are
 // invalidated so the merged samples/histograms/exemplars are actually written to
