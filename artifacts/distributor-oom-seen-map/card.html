@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #111217;
+    --panel: #181b1f;
+    --panel-2: #22252b;
+    --line: #2e3238;
+    --text: #dfe1e4;
+    --muted: #8e9096;
+    --red: #f2495c;
+    --green: #56a64b;
+    --orange: #ff9830;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    width: 1200px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { padding: 34px 40px 38px; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.2px; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0 0 4px; }
+  .repo { color: var(--muted); font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace; margin: 0 0 26px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px 22px; }
+  .panel h2 { font-size: 13px; font-weight: 600; letter-spacing: 1.1px; text-transform: uppercase; margin: 0 0 18px; color: var(--muted); }
+  .panel h2 .tag { float: right; letter-spacing: 0; text-transform: none; font-size: 12px; padding: 2px 9px; border-radius: 10px; }
+  .tag.before { background: rgba(242,73,92,0.15); color: var(--red); }
+  .tag.after { background: rgba(86,166,75,0.15); color: var(--green); }
+  .stat { margin-bottom: 20px; }
+  .stat:last-child { margin-bottom: 0; }
+  .stat .label { font-size: 13px; color: var(--muted); margin-bottom: 7px; }
+  .stat .value { font-size: 40px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
+  .stat .value small { font-size: 18px; font-weight: 500; color: var(--muted); margin-left: 5px; letter-spacing: 0; }
+  .bar { height: 10px; border-radius: 5px; background: var(--panel-2); margin-top: 12px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 5px; }
+  .red { color: var(--red); } .greenv { color: var(--green); }
+  .fill-red { background: var(--red); } .fill-green { background: var(--green); }
+  .foot { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; }
+  .foot .row { display: flex; gap: 12px; font-size: 14px; line-height: 1.55; margin-bottom: 9px; }
+  .foot .row:last-child { margin-bottom: 0; }
+  .foot .k { color: var(--muted); min-width: 108px; flex: 0 0 108px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: var(--panel-2); padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Distributor OOM: merge lookup map pinned for the whole push</h1>
+  <p class="sub">512 pushes of 1000 series each, parked inside <code>next()</code> — the state a distributor is in while it waits on the ingesters.</p>
+  <p class="repo">Rperry2174/mimir &nbsp;·&nbsp; pkg/distributor &nbsp;·&nbsp; prePushMergeMiddleware</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Before<span class="tag before">main</span></h2>
+      <div class="stat">
+        <div class="label">Lookup maps taken from the pool</div>
+        <div class="value red">512</div>
+        <div class="bar"><div class="fill-red" style="width:100%"></div></div>
+      </div>
+      <div class="stat">
+        <div class="label">Heap held while pushes are in flight</div>
+        <div class="value red">56.4<small>MiB</small></div>
+        <div class="bar"><div class="fill-red" style="width:100%"></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>After<span class="tag after">this PR</span></h2>
+      <div class="stat">
+        <div class="label">Lookup maps taken from the pool</div>
+        <div class="value greenv">8<small>one per P</small></div>
+        <div class="bar"><div class="fill-green" style="width:1.6%"></div></div>
+      </div>
+      <div class="stat">
+        <div class="label">Heap held while pushes are in flight</div>
+        <div class="value greenv">0.3<small>MiB</small></div>
+        <div class="bar"><div class="fill-green" style="width:0.6%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="row"><span class="k">Cause</span><span>The pooled label-hash map was released with a <code>defer</code>, so it lived until <code>next()</code> returned — the whole push, ingester round trip included — instead of just the merge pass.</span></div>
+    <div class="row"><span class="k">Scale</span><span>One map per in-flight push. ~113&nbsp;KiB at 1000 series, ~900&nbsp;KiB at the 10k pooling bound, times the default <code>max-inflight-push-requests=2000</code> → 220&nbsp;MiB to 1.75&nbsp;GiB of idle heap.</span></div>
+    <div class="row"><span class="k">Fix</span><span>Move the merge pass into its own function so the map returns to the pool when the pass ends. Merge logic unchanged; per-request time and allocations unchanged.</span></div>
+  </div>
+</div>
+</body>
+</html>

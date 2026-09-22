@@ -1,0 +1,7 @@
+ok  	github.com/grafana/mimir/pkg/distributor	75.841s
+?   	github.com/grafana/mimir/pkg/distributor/distributorpb	[no test files]
+ok  	github.com/grafana/mimir/pkg/distributor/influxpush	0.009s
+ok  	github.com/grafana/mimir/pkg/distributor/otlpappender	0.006s
+ok  	github.com/grafana/mimir/pkg/mimirpb	2.462s
+?   	github.com/grafana/mimir/pkg/mimirpb/testutil	[no test files]
+EXIT=0
